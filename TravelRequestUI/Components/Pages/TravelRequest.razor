@@ -1,0 +1,124 @@
+@page "/travelrequests"
+@rendermode InteractiveServer
+
+@inject TravelRequestUI.Services.TravelRequestService TravelRequestService
+
+<PageTitle>Travel Requests</PageTitle>
+
+<h1>Travel Requests</h1>
+
+<div class="container">
+    <div class="row">
+        <div class="col">
+            <h3>@(editMode ? "Edit Travel Request" : "Add Travel Request")</h3>
+
+            <EditForm Model="currentRequest" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator/>
+                <ValidationSummary/>
+
+                <div class="mb-3">
+                    <label for="destination" class="form-label">Destination</label>
+                    <InputText id="destination" class="form-control" @bind-Value="currentRequest.Destination"/>
+                </div>
+                <div class="mb-3">
+                    <label for="fromDate" class="form-label">From Date</label>
+                    <InputDate id="fromDate" class="form-control" @bind-Value="currentRequest.StartDate"/>
+                </div>
+                <div class="mb-3">
+                    <label for="toDate" class="form-label">To Date</label>
+                    <InputDate id="toDate" class="form-control" @bind-Value="currentRequest.EndDate"/>
+                </div>
+                <button type="submit" class="btn btn-success">Save</button>
+            </EditForm>
+        </div>
+        
+        <div class="col">
+            @if (travelRequests is null)
+            {
+                <p><em>Loading...</em></p>
+            }
+            else
+            {
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Destination</th>
+                        <th>From Date</th>
+                        <th>To Date</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var request in travelRequests)
+                    {
+                        <tr>
+                            <td>@request.Destination</td>
+                            <td>@request.StartDate.ToShortDateString()</td>
+                            <td>@request.EndDate.ToShortDateString()</td>
+                            <td>
+                                <button class="btn btn-primary" @onclick="() => EditRequest(request)">Edit</button>
+                                <button class="btn btn-danger" @onclick="() => DeleteRequest(request.Id)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+    </div>
+</div>
+
+@code {
+    private List<TravelRequestUI.Models.TravelRequest>? travelRequests = null;
+    private TravelRequestUI.Models.TravelRequest currentRequest = new()
+    {
+            StartDate = DateOnly.FromDateTime(DateTime.Now),
+            EndDate = DateOnly.FromDateTime(DateTime.Now)
+    };
+    private bool editMode = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        travelRequests = await TravelRequestService.GetAll();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (editMode)
+        {
+            await TravelRequestService.Update(currentRequest);
+        }
+        else
+        {
+            await TravelRequestService.Add(currentRequest);
+        }
+
+        currentRequest = new TravelRequestUI.Models.TravelRequest()
+        {
+            StartDate = DateOnly.FromDateTime(DateTime.Now),
+            EndDate = DateOnly.FromDateTime(DateTime.Now)
+        };
+        travelRequests = await TravelRequestService.GetAll();
+        editMode = false;
+    }
+
+    private void EditRequest(TravelRequestUI.Models.TravelRequest request)
+    {
+        currentRequest = new TravelRequestUI.Models.TravelRequest
+        {
+            Id = request.Id,
+            Destination = request.Destination,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate
+        };
+        editMode = true;
+    }
+
+    private async Task DeleteRequest(Guid id)
+    {
+        await TravelRequestService.Delete(id);
+        travelRequests = await TravelRequestService.GetAll();
+    }
+
+}
